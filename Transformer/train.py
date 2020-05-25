@@ -105,7 +105,9 @@ def main():
     #SRC, TRG = create_fields(opt)
     #opt.train = create_dataset(opt, SRC, TRG)
     
-    
+    if not os.path.exists('./data'):
+        os.makedirs('./data')
+
     # modified version for tokenize, vocab, dataset
     if opt.is_train:
         filenames = ['data/europarl-v7.de-en.en', 'data/europarl-v7.de-en.de']
