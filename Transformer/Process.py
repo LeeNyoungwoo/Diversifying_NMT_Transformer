@@ -20,7 +20,7 @@ def read_data(opt):
         except:
             print("error: '" + opt.trg_data + "' file not found")
             quit()
-
+    
 def create_fields(opt):
     spacy_langs = ['en_core_web_sm', 'fr_core_news_sm', 'de', 'es', 'pt', 'it', 'nl']
     if opt.src_lang not in spacy_langs:
