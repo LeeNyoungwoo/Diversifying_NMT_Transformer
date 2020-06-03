@@ -63,7 +63,7 @@ def train_model(model, opt):
         total_loss = 0
                     
         # for batch_idx, (enc_input, dec_input, dec_output) in enumerate(opt.train): 
-        for batch_idx, (enc_input, dec_input, dec_output) in enumerate(tqdm(opt.train, desc="Iteration", position=1)):
+        for batch_idx, (enc_input, dec_input, dec_output) in enumerate(tqdm(opt.train, desc="Iteration", ncols=100, position=1)):
             enc_input = enc_input.transpose(0,1).to(opt.device)
             dec_input = dec_input.transpose(0,1).to(opt.device)
             dec_output = dec_output.to(opt.device)
@@ -108,7 +108,7 @@ def train_model(model, opt):
         model.eval()
         val_loss = 0
         with torch.no_grad():
-            for batch_idx, (enc_input, dec_input, dec_output) in enumerate(tqdm(opt.validation, desc="Iteration", position=1)):
+            for batch_idx, (enc_input, dec_input, dec_output) in enumerate(tqdm(opt.validation, desc="Iteration", ncols=100, position=1)):
                 enc_input = enc_input.transpose(0,1).to(opt.device)
                 dec_input = dec_input.transpose(0,1).to(opt.device)
                 dec_output = dec_output.to(opt.device)
@@ -222,7 +222,7 @@ def main():
     
     train_dataset = Our_Handler(src_path='./data/europarl-v7.de-en.en', tgt_path='./data/europarl-v7.de-en.de', vocab=vocab, tokenizer=sp_tokenizer, max_len=256)
     train_dataloader = DataLoader(train_dataset,
-                                  batch_size=32,
+                                  batch_size=8,
                                   shuffle=True,
                                   pin_memory=True,
                                   drop_last=True)
@@ -240,7 +240,7 @@ def main():
                             max_len=256)
     
     dev_dataloader = DataLoader(dev_dataset,
-                            batch_size=32,
+                            batch_size=8,
                             shuffle=False,
                             drop_last=True)
     opt.validation = dev_dataloader
@@ -258,7 +258,7 @@ def main():
                             is_test=True)
     
     test_dataloader = DataLoader(test_dataset,
-                            batch_size=32,
+                            batch_size=8,
                             shuffle=False,
                             drop_last=True)
     opt.test = test_dataloader
@@ -362,4 +362,5 @@ def promptNextAction(model, opt):
     
 if __name__ == "__main__":
     os.environ["CUDA_VISIBLE_DEVICES"] = '1'
+    # os.environ["CUDA_VISIBLE_DEVICES"] = '0'
     main()
