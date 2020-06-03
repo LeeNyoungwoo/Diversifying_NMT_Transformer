@@ -153,6 +153,22 @@ def main():
     
     ####################################################
     
+    ######################TEST DATA######################
+    # fitting the test dataset dir
+    test_data_dir = ['data/test/newstest2014.en', 'data/test/newstest2014.de']
+    test_dataset = Our_Handler(src_path=test_data_dir[0], 
+                            tgt_path=test_data_dir[1],
+                            vocab=vocab, 
+                            tokenizer=sp_tokenizer,
+                            max_len=256,
+                            is_test=True)
+    
+    test_dataloader = DataLoader(test_dataset,
+                            batch_size=32,
+                            shuffle=False,
+                            drop_last=True)
+    
+    ####################################################
     #model = get_model(opt, len(SRC.vocab), len(TRG.vocab))
     model = get_model(opt, len(sp_vocab), len(sp_vocab))
     

@@ -2,7 +2,7 @@ from torch.utils.data import Dataset
 import torch
 
 class Our_Handler(Dataset):
-    def __init__(self, src_path, tgt_path, vocab, tokenizer, max_len=100):
+    def __init__(self, src_path, tgt_path, vocab, tokenizer, max_len=100, is_test=False):
         self.src_path = src_path
         self.tgt_path = tgt_path
         self.vocab = vocab
@@ -10,11 +10,18 @@ class Our_Handler(Dataset):
         
         self.max_len = max_len
         
-        with open(src_path, encoding='utf-8') as f:
-            self.src_corpus = [line.strip().split('\n') for line in f.readlines()]
-        
-        with open(tgt_path, encoding='utf-8') as f:
-            self.tgt_corpus = [line.strip().split('\n') for line in f.readlines()]
+        if not is_test:
+            with open(src_path, encoding='utf-8') as f:
+                self.src_corpus = [line.strip().split('\n') for line in f.readlines()]
+
+            with open(tgt_path, encoding='utf-8') as f:
+                self.tgt_corpus = [line.strip().split('\n') for line in f.readlines()]
+        else:
+            with open(src_path, 'rb') as f:
+                self.src_corpus = pickle.load(f)
+            
+            with open(tgt_path, 'rb') as f:
+                self.tgt_corpus = pickle.load(f)
     
     def __len__(self):
         return len(self.src_corpus)
