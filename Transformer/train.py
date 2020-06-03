@@ -13,6 +13,7 @@ from torch.utils.data import DataLoader
 from spm_tokenize import *
 from spm_vocab import *
 from spm_handler import *
+from tqdm import tqdm, trange
 
 def train_model(model, opt):
     
@@ -21,8 +22,10 @@ def train_model(model, opt):
     start = time.time()
     if opt.checkpoint > 0:
         cptime = time.time()
-                 
-    for epoch in range(opt.epochs):
+
+    loss_log = tqdm(total=0, bar_format='{desc}', position=2)   
+    # for epoch in range(opt.epochs):
+    for epoch in trange(opt.epochs, desc="Epoch", position=0):
         if epoch == 1:
             break
         total_loss = 0
@@ -57,10 +60,10 @@ def train_model(model, opt):
                 opt.sched.step()
             
             total_loss += loss.item()
+            avg_loss = total_loss/opt.printevery
             
             if (batch_idx + 1) % opt.printevery == 0:
                 p = int(100 * (batch_idx + 1) / opt.train_len)
-                avg_loss = total_loss/opt.printevery
                 if opt.floyd is False:
                     print("   %dm: epoch %d [%s%s]  %d%%  loss = %.3f" %\
                     ((time.time() - start)//60, epoch + 1, "".join('#'*(p//5)), "".join(' '*(20-(p//5))), p, avg_loss), end='\r')
