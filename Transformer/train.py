@@ -78,7 +78,6 @@ def train_model(model, opt):
         ((time.time() - start)//60, epoch + 1, "".join('#'*(100//5)), "".join(' '*(20-(100//5))), 100, avg_loss, epoch + 1, avg_loss))
 
 def main():
-    
     parser = argparse.ArgumentParser()
     parser.add_argument('-no_cuda', action='store_true')
     parser.add_argument('-SGDR', action='store_true')
@@ -137,6 +136,22 @@ def main():
     opt.train = train_dataloader
     opt.src_pad = opt.trg_pad = vocab.pad_index
     opt.train_len = len(train_dataloader)
+    
+    ######################DEV DATA######################
+    # fitting the dev dataset dir
+    dev_data_dir = ['data/dev/newstest2013.en', 'data/dev/newstest2013.de']
+    dev_dataset = Our_Handler(src_path=dev_data_dir[0], 
+                            tgt_path=dev_data_dir[1],
+                            vocab=vocab, 
+                            tokenizer=sp_tokenizer,
+                            max_len=256)
+    
+    dev_dataloader = DataLoader(dev_dataset,
+                            batch_size=32,
+                            shuffle=False,
+                            drop_last=True)
+    
+    ####################################################
     
     #model = get_model(opt, len(SRC.vocab), len(TRG.vocab))
     model = get_model(opt, len(sp_vocab), len(sp_vocab))
