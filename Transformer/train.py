@@ -15,31 +15,55 @@ from spm_vocab import *
 from spm_handler import *
 from tqdm import tqdm, trange
 
+# Early Stopping
+class EarlyStopping():
+    def __init__(self, patience=0, verbose=0):
+        self._step = 0
+        self._loss = float('inf')
+        self.patience  = patience
+        self.verbose = verbose
+
+    def validate(self, loss):
+        if self._loss < loss:
+            self._step += 1
+            if self._step > self.patience:
+                if self.verbose:
+                    print(f'Training process is stopped early....')
+                return True
+        else:
+            self._step = 0
+            self._loss = loss
+
+        return False
+
 def train_model(model, opt):
     
     print("training model...")
-    model.train()
+    # model.train()
     start = time.time()
     if opt.checkpoint > 0:
         cptime = time.time()
 
+    early_stopping = EarlyStopping(patience=10, verbose=1)
+
     loss_log = tqdm(total=0, bar_format='{desc}', position=2)   
     # for epoch in range(opt.epochs):
     for epoch in trange(opt.epochs, desc="Epoch", position=0):
-        if epoch == 1:
-            break
-        total_loss = 0
+        
         if opt.floyd is False:
             print("   %dm: epoch %d [%s]  %d%%  loss = %s" %\
             ((time.time() - start)//60, epoch + 1, "".join(' '*20), 0, '...'), end='\r')
         
         if opt.checkpoint > 0:
             torch.save(model.state_dict(), 'weights/model_weights')
+
+        
+        # Training the model
+        model.train()
+        total_loss = 0
                     
-        for batch_idx, (enc_input, dec_input, dec_output) in enumerate(opt.train): 
-            if batch_idx == 1:
-                break
-                
+        # for batch_idx, (enc_input, dec_input, dec_output) in enumerate(opt.train): 
+        for batch_idx, (enc_input, dec_input, dec_output) in enumerate(tqdm(opt.train, desc="Iteration", position=1)):
             enc_input = enc_input.transpose(0,1).to(opt.device)
             dec_input = dec_input.transpose(0,1).to(opt.device)
             dec_output = dec_output.to(opt.device)
@@ -61,7 +85,7 @@ def train_model(model, opt):
             
             total_loss += loss.item()
             avg_loss = total_loss/opt.printevery
-            
+
             if (batch_idx + 1) % opt.printevery == 0:
                 p = int(100 * (batch_idx + 1) / opt.train_len)
                 if opt.floyd is False:
@@ -79,6 +103,38 @@ def train_model(model, opt):
    
         print("%dm: epoch %d [%s%s]  %d%%  loss = %.3f\nepoch %d complete, loss = %.03f" %\
         ((time.time() - start)//60, epoch + 1, "".join('#'*(100//5)), "".join(' '*(20-(100//5))), 100, avg_loss, epoch + 1, avg_loss))
+    
+        ## Validating the model
+        model.eval()
+        val_loss = 0
+        with torch.no_grad():
+            for batch_idx, (enc_input, dec_input, dec_output) in enumerate(tqdm(opt.validation, desc="Iteration", position=1)):
+                enc_input = enc_input.transpose(0,1).to(opt.device)
+                dec_input = dec_input.transpose(0,1).to(opt.device)
+                dec_output = dec_output.to(opt.device)
+
+                src_mask, trg_mask = create_masks(enc_input, dec_input, opt)
+
+                preds = model(enc_input, dec_input, src_mask, trg_mask)
+
+                ys = dec_output.contiguous().view(-1)
+
+                loss = F.cross_entropy(preds.view(-1, preds.size(-1)), ys, ignore_index=opt.trg_pad)
+                val_loss += loss.item()
+                val_avg_loss = total_loss/opt.printevery
+
+                if (batch_idx + 1) % opt.printevery == 0:
+                    p = int(100 * (batch_idx + 1) / opt.val_len)
+                    if opt.floyd is False:
+                        print("   %dm: epoch %d [%s%s]  %d%%  loss = %.3f" %\
+                        ((time.time() - start)//60, epoch + 1, "".join('#'*(p//5)), "".join(' '*(20-(p//5))), p, val_avg_loss), end='\r')
+                    else:
+                        print("   %dm: epoch %d [%s%s]  %d%%  loss = %.3f" %\
+                        ((time.time() - start)//60, epoch + 1, "".join('#'*(p//5)), "".join(' '*(20-(p//5))), p, val_avg_loss))
+                    val_loss = 0
+
+        if early_stopping.validate(val_loss):
+            break
 
 def main():
     parser = argparse.ArgumentParser()
@@ -142,7 +198,7 @@ def main():
     
     ######################DEV DATA######################
     # fitting the dev dataset dir
-    dev_data_dir = ['data/dev/newstest2013.en', 'data/dev/newstest2013.de']
+    dev_data_dir = ['./data/dev/newstest2013.en', './data/dev/newstest2013.de']
     dev_dataset = Our_Handler(src_path=dev_data_dir[0], 
                             tgt_path=dev_data_dir[1],
                             vocab=vocab, 
@@ -153,12 +209,13 @@ def main():
                             batch_size=32,
                             shuffle=False,
                             drop_last=True)
-    
+    opt.validation = dev_dataloader
+    opt.val_len = len(dev_dataloader)
     ####################################################
-    
+
     ######################TEST DATA######################
     # fitting the test dataset dir
-    test_data_dir = ['data/test/newstest2014.en', 'data/test/newstest2014.de']
+    test_data_dir = ['./data/test/newstest2014_en', './data/test/newstest2014_de']
     test_dataset = Our_Handler(src_path=test_data_dir[0], 
                             tgt_path=test_data_dir[1],
                             vocab=vocab, 
@@ -195,8 +252,8 @@ def main():
     
     train_model(model, opt)
 
-    if opt.floyd is False:
-        promptNextAction(model, opt, SRC, TRG)
+    # if opt.floyd is False:
+    #     promptNextAction(model, opt, SRC, TRG)
 
 def yesno(response):
     while True:
