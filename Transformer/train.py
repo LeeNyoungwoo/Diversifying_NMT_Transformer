@@ -121,7 +121,7 @@ def train_model(model, opt):
 
                 loss = F.cross_entropy(preds.view(-1, preds.size(-1)), ys, ignore_index=opt.trg_pad)
                 val_loss += loss.item()
-                val_avg_loss = total_loss/opt.printevery
+                val_avg_loss = val_loss/opt.printevery
 
                 if (batch_idx + 1) % opt.printevery == 0:
                     p = int(100 * (batch_idx + 1) / opt.val_len)
@@ -135,6 +135,39 @@ def train_model(model, opt):
 
         if early_stopping.validate(val_loss):
             break
+
+def test_model(model, opt):
+    print("Testing model...")
+    model.eval()
+    start = time.time()
+    if opt.checkpoint > 0:
+        cptime = time.time()
+
+    loss_log = tqdm(total=0, bar_format='{desc}', position=2)   
+    # for epoch in range(opt.epochs):
+    test_loss = 0
+    with torch.no_grad():
+        for batch_idx, (enc_input, dec_input, dec_output) in enumerate(tqdm(opt.test, desc="Iteration", position=0)):
+            enc_input = enc_input.transpose(0,1).to(opt.device)
+            dec_input = dec_input.transpose(0,1).to(opt.device)
+            dec_output = dec_output.to(opt.device)
+
+            src_mask, trg_mask = create_masks(enc_input, dec_input, opt)
+
+            preds = model(enc_input, dec_input, src_mask, trg_mask)
+
+            ys = dec_output.contiguous().view(-1)
+
+            loss = F.cross_entropy(preds.view(-1, preds.size(-1)), ys, ignore_index=opt.trg_pad)
+            test_loss += loss.item()
+            test_avg_loss = test_loss/opt.printevery
+
+            if (batch_idx + 1) % opt.printevery == 0:
+                p = int(100 * (batch_idx + 1) / opt.test_len)
+                test_loss = 0
+        
+        print("%dm: Evaluated loss = %.3f\n" %\
+        ((time.time() - start)//60, test_avg_loss))
 
 def main():
     parser = argparse.ArgumentParser()
@@ -154,6 +187,7 @@ def main():
     parser.add_argument('-floyd', action='store_true')
     parser.add_argument('-checkpoint', type=int, default=0)
     parser.add_argument('--is_train', type=bool, default=False)
+    parser.add_argument('--is_test', type=bool, default=False)
     
     opt = parser.parse_args()
     opt.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -227,8 +261,10 @@ def main():
                             batch_size=32,
                             shuffle=False,
                             drop_last=True)
-    
+    opt.test = test_dataloader
+    opt.test_len = len(test_dataloader)
     ####################################################
+
     #model = get_model(opt, len(SRC.vocab), len(TRG.vocab))
     model = get_model(opt, len(sp_vocab), len(sp_vocab))
     
@@ -250,10 +286,12 @@ def main():
         pickle.dump(SRC, open('weights/SRC.pkl', 'wb'))
         pickle.dump(TRG, open('weights/TRG.pkl', 'wb'))
     
-    train_model(model, opt)
-
-    # if opt.floyd is False:
-    #     promptNextAction(model, opt, SRC, TRG)
+    if opt.is_test:
+        test_model(model, opt)
+    else:
+        train_model(model, opt)
+        if opt.floyd is False:
+            promptNextAction(model, opt)
 
 def yesno(response):
     while True:
@@ -262,7 +300,7 @@ def yesno(response):
         else:
             return response
 
-def promptNextAction(model, opt, SRC, TRG):
+def promptNextAction(model, opt):
 
     saved_once = 1 if opt.load_weights is not None or opt.checkpoint > 0 else 0
     
@@ -293,10 +331,10 @@ def promptNextAction(model, opt, SRC, TRG):
             
             print("saving weights to " + dst + "/...")
             torch.save(model.state_dict(), f'{dst}/model_weights')
-            if saved_once == 0:
-                pickle.dump(SRC, open(f'{dst}/SRC.pkl', 'wb'))
-                pickle.dump(TRG, open(f'{dst}/TRG.pkl', 'wb'))
-                saved_once = 1
+            # if saved_once == 0:
+            #     pickle.dump(SRC, open(f'{dst}/SRC.pkl', 'wb'))
+            #     pickle.dump(TRG, open(f'{dst}/TRG.pkl', 'wb'))
+            #     saved_once = 1
             
             print("weights and field pickles saved to " + dst)
 
