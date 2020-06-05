@@ -266,7 +266,7 @@ def main():
     ####################################################
 
     #model = get_model(opt, len(SRC.vocab), len(TRG.vocab))
-    model = get_model(opt, len(sp_vocab), len(sp_vocab))
+    model = get_model(opt, len(vocab), len(vocab))
     
     if torch.cuda.device_count() > 1:
         model = nn.DataParallel(model)
