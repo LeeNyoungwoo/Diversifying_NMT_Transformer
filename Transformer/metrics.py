@@ -23,3 +23,6 @@ def pwb_compute(translation_list):
     assert len(pwb_score) == 20
     
     return sum(pwb_score) / len(pwb_score)
+
+def deq_compute(rfb, rfb_base, pwb, pwb_base):
+    return (pwb_base - pwb) / (rfb_base - rfb)
