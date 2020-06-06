@@ -17,7 +17,7 @@ from tqdm import tqdm, trange
 
 # Early Stopping
 class EarlyStopping():
-    def __init__(self, patience=0, verbose=0):
+    def __init__(self, patience=8, verbose=0):
         self._step = 0
         self._loss = float('inf')
         self.patience  = patience
@@ -220,9 +220,12 @@ def main():
         print(f'Load the extended vocab...')
         vocab = Vocabulary.load_vocab('./data/vocab')
     
-    train_dataset = Our_Handler(src_path='./data/europarl-v7.de-en.en', tgt_path='./data/europarl-v7.de-en.de', vocab=vocab, tokenizer=sp_tokenizer, max_len=256)
+    train_dataset = Our_Handler(src_path='./data/europarl-v7.de-en.en', tgt_path='./data/europarl-v7.de-en.de', vocab=vocab, tokenizer=sp_tokenizer, max_len=32)
+#     print(train_dataset[0])
+#     print(train_dataset[0][0].shape, train_dataset[0][1].shape, train_dataset[0][2].shape)
+    
     train_dataloader = DataLoader(train_dataset,
-                                  batch_size=8,
+                                  batch_size=32,
                                   shuffle=True,
                                   pin_memory=True,
                                   drop_last=True)
@@ -237,10 +240,10 @@ def main():
                             tgt_path=dev_data_dir[1],
                             vocab=vocab, 
                             tokenizer=sp_tokenizer,
-                            max_len=256)
+                            max_len=32)
     
     dev_dataloader = DataLoader(dev_dataset,
-                            batch_size=8,
+                            batch_size=32,
                             shuffle=False,
                             drop_last=True)
     opt.validation = dev_dataloader
@@ -254,11 +257,11 @@ def main():
                             tgt_path=test_data_dir[1],
                             vocab=vocab, 
                             tokenizer=sp_tokenizer,
-                            max_len=256,
+                            max_len=32,
                             is_test=True)
     
     test_dataloader = DataLoader(test_dataset,
-                            batch_size=8,
+                            batch_size=32,
                             shuffle=False,
                             drop_last=True)
     opt.test = test_dataloader
@@ -266,7 +269,7 @@ def main():
     ####################################################
 
     #model = get_model(opt, len(SRC.vocab), len(TRG.vocab))
-    model = get_model(opt, len(sp_vocab), len(sp_vocab))
+    model = get_model(opt, len(vocab), len(vocab))
     
     if torch.cuda.device_count() > 1:
         model = nn.DataParallel(model)
@@ -361,6 +364,6 @@ def promptNextAction(model, opt):
     # for asking about further training use while true loop, and return
     
 if __name__ == "__main__":
-    os.environ["CUDA_VISIBLE_DEVICES"] = '1'
-    # os.environ["CUDA_VISIBLE_DEVICES"] = '0'
+#     os.environ["CUDA_VISIBLE_DEVICES"] = '1'
+    os.environ["CUDA_VISIBLE_DEVICES"] = '0'
     main()

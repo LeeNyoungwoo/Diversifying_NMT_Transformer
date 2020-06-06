@@ -1,0 +1,22 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+
+# checkpoint
+checkpoint/
+
+# OS Files 
+.DS_Store
+
+# Data
+data/
+
+# Model
+30len_128batch_10epochs/
+32len_32batch_10epochs/
+
+#spm
+spm.model
+spm.vocab

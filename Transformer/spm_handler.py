@@ -8,7 +8,6 @@ class Our_Handler(Dataset):
         self.tgt_path = tgt_path
         self.vocab = vocab
         self.tokenizer = tokenizer
-        
         self.max_len = max_len
         
         if not is_test:
@@ -33,6 +32,10 @@ class Our_Handler(Dataset):
         dec_outputs = []
         
         for idx, (src_sent, tgt_sent) in enumerate(zip(self.src_corpus[item], self.tgt_corpus[item])):
+            if len(src_sent) > self.max_len:
+                src_sent = self.truncating(src_sent)
+            if len(tgt_sent) > self.max_len:
+                tgt_sent = self.truncating(tgt_sent)
             src_ids = self.convert_tokens_to_ids(src_sent)
             tgt_ids = self.convert_tokens_to_ids(tgt_sent)
             
