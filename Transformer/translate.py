@@ -15,14 +15,14 @@ from nltk.corpus import wordnet
 from torch.autograd import Variable
 import re
 
-def get_synonym(word, SRC):
-    syns = wordnet.synsets(word)
-    for s in syns:
-        for l in s.lemmas():
-            if SRC.vocab.stoi[l.name()] != 0:
-                return SRC.vocab.stoi[l.name()]
-            
-    return 0
+def convert_tokens_to_ids(vocab, tokenizer, sent):
+    tokens = tokenizer.tokenizer(sent)
+    token2idx = []
+
+    for idx, token in enumerate(tokens):
+        token2idx.append(vocab.stoi.get(token, vocab.unk_index))
+
+    return token2idx
 
 def multiple_replace(dict, text):
   # Create a regular expression  from the dictionary keys
@@ -31,21 +31,19 @@ def multiple_replace(dict, text):
   # For each match, look-up corresponding value in dictionary
   return regex.sub(lambda mo: dict[mo.string[mo.start():mo.end()]], text) 
 
-def translate_sentence(sentence, model, opt, SRC, TRG):
+def translate_sentence(sentence, model, opt, vocab, tokenizer):
     
     model.eval()
     indexed = []
-    sentence = SRC.preprocess(sentence)
-    for tok in sentence:
-        if SRC.vocab.stoi[tok] != 0 or opt.floyd == True:
-            indexed.append(SRC.vocab.stoi[tok])
-        else:
-            indexed.append(get_synonym(tok, SRC))
-    sentence = Variable(torch.LongTensor([indexed]))
-    if opt.device == 0:
+    #sentence = SRC.preprocess(sentence)
+    print(sentence)
+    sentence = convert_tokens_to_ids(vocab, tokenizer, sentence)
+
+    sentence = Variable(torch.LongTensor([sentence]))
+    if opt.device == 'cuda':
         sentence = sentence.cuda()
     
-    sentence = beam_search(sentence, model, SRC, TRG, opt)
+    sentence = beam_search(sentence, model, vocab, opt)
 
     return  multiple_replace({' ?' : '?',' !':'!',' .':'.','\' ':'\'',' ,':','}, sentence)
 
@@ -67,22 +65,38 @@ def main():
     parser.add_argument('-max_len', type=int, default=80)
     parser.add_argument('-d_model', type=int, default=512)
     parser.add_argument('-n_layers', type=int, default=6)
-    parser.add_argument('-src_lang', required=True)
-    parser.add_argument('-trg_lang', required=True)
     parser.add_argument('-heads', type=int, default=8)
     parser.add_argument('-dropout', type=int, default=0.1)
-    parser.add_argument('-no_cuda', action='store_true')
-    parser.add_argument('-floyd', action='store_true')
     
     opt = parser.parse_args()
 
-    opt.device = 0 if opt.no_cuda is False else -1
- 
-    assert opt.k > 0
-    assert opt.max_len > 10
+    opt.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    SRC, TRG = create_fields(opt)
-    model = get_model(opt, len(SRC.vocab), len(TRG.vocab))
+    print(f'Load Tokenizer and Vocab...')
+    sp_tokenizer = Tokenizer(is_train=False, model_prefix='spm')
+    sp_vocab = sp_tokenizer.vocab
+    
+    print(f'Load the extended vocab...')
+    vocab = Vocabulary.load_vocab('./data/vocab')
+    
+    ######################TEST DATA######################
+    # fitting the test dataset dir
+    test_data_dir = ['./data/test/newstest2014_en', './data/test/newstest2014_de']
+    test_dataset = Our_Handler(src_path=test_data_dir[0], 
+                            tgt_path=test_data_dir[1],
+                            vocab=vocab, 
+                            tokenizer=sp_tokenizer,
+                            max_len=256,
+                            is_test=True)
+
+    test_dataloader = DataLoader(test_dataset,
+                            batch_size=8,
+                            shuffle=False,
+                            drop_last=True)
+    opt.test = test_dataloader
+    opt.test_len = len(test_dataloader)
+    ####################################################
+    model = get_model(opt, len(vocab), len(vocab))
     
     while True:
         opt.text =input("Enter a sentence to translate (type 'f' to load from file, or 'q' to quit):\n")

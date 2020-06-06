@@ -4,14 +4,14 @@ import torch.nn.functional as F
 import math
 
 
-def init_vars(src, model, SRC, TRG, opt):
+def init_vars(src, model, vocab, opt):
     
-    init_tok = TRG.vocab.stoi['<sos>']
-    src_mask = (src != SRC.vocab.stoi['<pad>']).unsqueeze(-2)
+    init_tok = vocab.stoi['<sos>']
+    src_mask = (src != vocab.stoi['<pad>']).unsqueeze(-2)
     e_output = model.encoder(src, src_mask)
     
     outputs = torch.LongTensor([[init_tok]])
-    if opt.device == 0:
+    if opt.device == 'cuda':
         outputs = outputs.cuda()
     
     trg_mask = nopeak_mask(1, opt)
@@ -24,7 +24,7 @@ def init_vars(src, model, SRC, TRG, opt):
     log_scores = torch.Tensor([math.log(prob) for prob in probs.data[0]]).unsqueeze(0)
     
     outputs = torch.zeros(opt.k, opt.max_len).long()
-    if opt.device == 0:
+    if opt.device == 'cuda':
         outputs = outputs.cuda()
     outputs[:, 0] = init_tok
     outputs[:, 1] = ix[0]
@@ -52,12 +52,11 @@ def k_best_outputs(outputs, out, log_scores, i, k):
     
     return outputs, log_scores
 
-def beam_search(src, model, SRC, TRG, opt):
+def beam_search(src, model, vocab, opt):
     
-
-    outputs, e_outputs, log_scores = init_vars(src, model, SRC, TRG, opt)
-    eos_tok = TRG.vocab.stoi['<eos>']
-    src_mask = (src != SRC.vocab.stoi['<pad>']).unsqueeze(-2)
+    outputs, e_outputs, log_scores = init_vars(src, model, vocab, opt)
+    eos_tok = vocab.stoi['<eos>']
+    src_mask = (src != vocab.stoi['<pad>']).unsqueeze(-2)
     ind = None
     for i in range(2, opt.max_len):
     
@@ -88,8 +87,8 @@ def beam_search(src, model, SRC, TRG, opt):
     
     if ind is None:
         length = (outputs[0]==eos_tok).nonzero()[0]
-        return ' '.join([TRG.vocab.itos[tok] for tok in outputs[0][1:length]])
+        return ' '.join([vocab.itos[tok] for tok in outputs[0][1:length]])
     
     else:
         length = (outputs[ind]==eos_tok).nonzero()[0]
-        return ' '.join([TRG.vocab.itos[tok] for tok in outputs[ind][1:length]])
+        return ' '.join([vocab.itos[tok] for tok in outputs[ind][1:length]])
