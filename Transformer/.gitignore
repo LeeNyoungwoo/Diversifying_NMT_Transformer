@@ -14,8 +14,7 @@ checkpoint/
 data/
 
 # Model
-30len_128batch_10epochs/
-32len_32batch_10epochs/
+save_models/
 
 #spm
 spm.model

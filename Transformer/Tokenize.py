@@ -1,4 +1,4 @@
-import spacy
+# import spacy
 import re
 import sentencepiece as spm
 

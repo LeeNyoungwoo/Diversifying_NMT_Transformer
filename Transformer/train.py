@@ -14,10 +14,11 @@ from spm_tokenize import *
 from spm_vocab import *
 from spm_handler import *
 from tqdm import tqdm, trange
+from nltk.translate.bleu_score import corpus_bleu
 
 # Early Stopping
 class EarlyStopping():
-    def __init__(self, patience=8, verbose=0):
+    def __init__(self, patience=30, verbose=0):
         self._step = 0
         self._loss = float('inf')
         self.patience  = patience
@@ -44,7 +45,7 @@ def train_model(model, opt):
     if opt.checkpoint > 0:
         cptime = time.time()
 
-    early_stopping = EarlyStopping(patience=10, verbose=1)
+    early_stopping = EarlyStopping(patience=120, verbose=1)
 
     loss_log = tqdm(total=0, bar_format='{desc}', position=2)   
     # for epoch in range(opt.epochs):
@@ -100,13 +101,14 @@ def train_model(model, opt):
                 torch.save(model.state_dict(), 'weights/model_weights')
                 cptime = time.time()
    
-   
         print("%dm: epoch %d [%s%s]  %d%%  loss = %.3f\nepoch %d complete, loss = %.03f" %\
         ((time.time() - start)//60, epoch + 1, "".join('#'*(100//5)), "".join(' '*(20-(100//5))), 100, avg_loss, epoch + 1, avg_loss))
     
         ## Validating the model
         model.eval()
         val_loss = 0
+        early_stopped = False
+        
         with torch.no_grad():
             for batch_idx, (enc_input, dec_input, dec_output) in enumerate(tqdm(opt.validation, desc="Iteration", ncols=100, position=1)):
                 enc_input = enc_input.transpose(0,1).to(opt.device)
@@ -121,6 +123,11 @@ def train_model(model, opt):
 
                 loss = F.cross_entropy(preds.view(-1, preds.size(-1)), ys, ignore_index=opt.trg_pad)
                 val_loss += loss.item()
+                
+                if early_stopping.validate(val_loss):
+                    early_stopped = True
+                    break
+
                 val_avg_loss = val_loss/opt.printevery
 
                 if (batch_idx + 1) % opt.printevery == 0:
@@ -132,8 +139,8 @@ def train_model(model, opt):
                         print("   %dm: epoch %d [%s%s]  %d%%  loss = %.3f" %\
                         ((time.time() - start)//60, epoch + 1, "".join('#'*(p//5)), "".join(' '*(20-(p//5))), p, val_avg_loss))
                     val_loss = 0
-
-        if early_stopping.validate(val_loss):
+                    
+        if early_stopped:
             break
 
 def test_model(model, opt):
@@ -179,7 +186,7 @@ def main():
     parser.add_argument('-heads', type=int, default=8)
     parser.add_argument('-dropout', type=int, default=0.1)
     parser.add_argument('-batchsize', type=int, default=1500)
-    parser.add_argument('-printevery', type=int, default=100)
+    parser.add_argument('-printevery', type=int, default=20)
     parser.add_argument('-lr', type=int, default=0.0001)
     parser.add_argument('-load_weights')
     parser.add_argument('-create_valset', action='store_true')
@@ -225,7 +232,7 @@ def main():
 #     print(train_dataset[0][0].shape, train_dataset[0][1].shape, train_dataset[0][2].shape)
     
     train_dataloader = DataLoader(train_dataset,
-                                  batch_size=32,
+                                  batch_size=64,
                                   shuffle=True,
                                   pin_memory=True,
                                   drop_last=True)
@@ -243,7 +250,7 @@ def main():
                             max_len=32)
     
     dev_dataloader = DataLoader(dev_dataset,
-                            batch_size=32,
+                            batch_size=64,
                             shuffle=False,
                             drop_last=True)
     opt.validation = dev_dataloader
@@ -261,7 +268,7 @@ def main():
                             is_test=True)
     
     test_dataloader = DataLoader(test_dataset,
-                            batch_size=32,
+                            batch_size=64,
                             shuffle=False,
                             drop_last=True)
     opt.test = test_dataloader
@@ -364,6 +371,6 @@ def promptNextAction(model, opt):
     # for asking about further training use while true loop, and return
     
 if __name__ == "__main__":
-#     os.environ["CUDA_VISIBLE_DEVICES"] = '1'
-    os.environ["CUDA_VISIBLE_DEVICES"] = '0'
+    os.environ["CUDA_VISIBLE_DEVICES"] = '1'
+#     os.environ["CUDA_VISIBLE_DEVICES"] = '0'
     main()
