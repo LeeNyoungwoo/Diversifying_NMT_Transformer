@@ -74,8 +74,6 @@ def train_model(model, opt):
                     
         for batch_idx, (enc_input, dec_input, dec_output) in enumerate(opt.train): 
         # for batch_idx, (enc_input, dec_input, dec_output) in enumerate(tqdm(opt.train, desc="Iteration", ncols=100, position=1)):
-            if batch_idx==101:
-                break
             enc_input = enc_input.transpose(0,1).to(opt.device)
             dec_input = dec_input.transpose(0,1).to(opt.device)
             dec_output = dec_output.to(opt.device)
