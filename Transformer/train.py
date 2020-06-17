@@ -6,18 +6,20 @@ from torch import nn
 from Models import get_model
 #from Process import *
 import torch.nn.functional as F
-from Optim import CosineWithRestarts
+from Optim import CosineWithRestarts,Triangular
 from Batch import create_masks
 import dill as pickle
+import pandas as pd
 from torch.utils.data import DataLoader
 from spm_tokenize import *
 from spm_vocab import *
 from spm_handler import *
 from tqdm import tqdm, trange
+from nltk.translate.bleu_score import corpus_bleu
 
 # Early Stopping
 class EarlyStopping():
-    def __init__(self, patience=0, verbose=0):
+    def __init__(self, patience=30, verbose=0):
         self._step = 0
         self._loss = float('inf')
         self.patience  = patience
@@ -35,6 +37,11 @@ class EarlyStopping():
             self._loss = loss
 
         return False
+    
+# Save csv file
+def write_csv_file(loss, loss_name='loss'):
+    df = pd.DataFrame({loss_name: loss})
+    df.to_csv(loss_name+'_result.csv', index=False, encoding='UTF8')
 
 def train_model(model, opt):
     
@@ -44,11 +51,15 @@ def train_model(model, opt):
     if opt.checkpoint > 0:
         cptime = time.time()
 
-    early_stopping = EarlyStopping(patience=10, verbose=1)
+    early_stopping = EarlyStopping(patience=200, verbose=1)
 
-    loss_log = tqdm(total=0, bar_format='{desc}', position=2)   
-    # for epoch in range(opt.epochs):
-    for epoch in trange(opt.epochs, desc="Epoch", position=0):
+    loss_log = tqdm(total=0, bar_format='{desc}', position=2)
+    
+    training_loss_list = []
+    val_loss_list = []
+    
+    for epoch in range(opt.epochs):
+    # for epoch in trange(opt.epochs, desc="Epoch", position=0):
         
         if opt.floyd is False:
             print("   %dm: epoch %d [%s]  %d%%  loss = %s" %\
@@ -57,13 +68,12 @@ def train_model(model, opt):
         if opt.checkpoint > 0:
             torch.save(model.state_dict(), 'weights/model_weights')
 
-        
         # Training the model
         model.train()
         total_loss = 0
                     
-        # for batch_idx, (enc_input, dec_input, dec_output) in enumerate(opt.train): 
-        for batch_idx, (enc_input, dec_input, dec_output) in enumerate(tqdm(opt.train, desc="Iteration", ncols=100, position=1)):
+        for batch_idx, (enc_input, dec_input, dec_output) in enumerate(opt.train): 
+        # for batch_idx, (enc_input, dec_input, dec_output) in enumerate(tqdm(opt.train, desc="Iteration", ncols=100, position=1)):
             enc_input = enc_input.transpose(0,1).to(opt.device)
             dec_input = dec_input.transpose(0,1).to(opt.device)
             dec_output = dec_output.to(opt.device)
@@ -88,18 +98,19 @@ def train_model(model, opt):
 
             if (batch_idx + 1) % opt.printevery == 0:
                 p = int(100 * (batch_idx + 1) / opt.train_len)
-                if opt.floyd is False:
-                    print("   %dm: epoch %d [%s%s]  %d%%  loss = %.3f" %\
-                    ((time.time() - start)//60, epoch + 1, "".join('#'*(p//5)), "".join(' '*(20-(p//5))), p, avg_loss), end='\r')
-                else:
-                    print("   %dm: epoch %d [%s%s]  %d%%  loss = %.3f" %\
-                    ((time.time() - start)//60, epoch + 1, "".join('#'*(p//5)), "".join(' '*(20-(p//5))), p, avg_loss))
+                print("   %dm: epoch %d [%s%s]  %d%%  loss = %.3f" %((time.time() - start)//60, epoch + 1, "".join('#'*(p//5)), "".join(' '*(20-(p//5))), p, avg_loss))
+                training_loss_list.append(avg_loss)
+                # if opt.floyd is False:
+                #     print("   %dm: epoch %d [%s%s]  %d%%  loss = %.3f" %\
+                #     ((time.time() - start)//60, epoch + 1, "".join('#'*(p//5)), "".join(' '*(20-(p//5))), p, avg_loss), end='\r')
+                # else:
+                #     print("   %dm: epoch %d [%s%s]  %d%%  loss = %.3f" %\
+                #     ((time.time() - start)//60, epoch + 1, "".join('#'*(p//5)), "".join(' '*(20-(p//5))), p, avg_loss))
                 total_loss = 0
             
             if opt.checkpoint > 0 and ((time.time()-cptime)//60) // opt.checkpoint >= 1:
                 torch.save(model.state_dict(), 'weights/model_weights')
                 cptime = time.time()
-   
    
         print("%dm: epoch %d [%s%s]  %d%%  loss = %.3f\nepoch %d complete, loss = %.03f" %\
         ((time.time() - start)//60, epoch + 1, "".join('#'*(100//5)), "".join(' '*(20-(100//5))), 100, avg_loss, epoch + 1, avg_loss))
@@ -107,8 +118,11 @@ def train_model(model, opt):
         ## Validating the model
         model.eval()
         val_loss = 0
+        early_stopped = False
+        
         with torch.no_grad():
-            for batch_idx, (enc_input, dec_input, dec_output) in enumerate(tqdm(opt.validation, desc="Iteration", ncols=100, position=1)):
+            for batch_idx, (enc_input, dec_input, dec_output) in enumerate(opt.validation): 
+            # for batch_idx, (enc_input, dec_input, dec_output) in enumerate(tqdm(opt.validation, desc="Iteration", ncols=100, position=1)):
                 enc_input = enc_input.transpose(0,1).to(opt.device)
                 dec_input = dec_input.transpose(0,1).to(opt.device)
                 dec_output = dec_output.to(opt.device)
@@ -121,20 +135,29 @@ def train_model(model, opt):
 
                 loss = F.cross_entropy(preds.view(-1, preds.size(-1)), ys, ignore_index=opt.trg_pad)
                 val_loss += loss.item()
+                
+                if early_stopping.validate(val_loss):
+                    early_stopped = True
+                    break
+
                 val_avg_loss = val_loss/opt.printevery
+                
+                val_loss_list.append(val_avg_loss)
 
                 if (batch_idx + 1) % opt.printevery == 0:
                     p = int(100 * (batch_idx + 1) / opt.val_len)
-                    if opt.floyd is False:
-                        print("   %dm: epoch %d [%s%s]  %d%%  loss = %.3f" %\
-                        ((time.time() - start)//60, epoch + 1, "".join('#'*(p//5)), "".join(' '*(20-(p//5))), p, val_avg_loss), end='\r')
-                    else:
-                        print("   %dm: epoch %d [%s%s]  %d%%  loss = %.3f" %\
-                        ((time.time() - start)//60, epoch + 1, "".join('#'*(p//5)), "".join(' '*(20-(p//5))), p, val_avg_loss))
+                    # if opt.floyd is False:
+                    #     print("   %dm: epoch %d [%s%s]  %d%%  loss = %.3f" %\
+                    #     ((time.time() - start)//60, epoch + 1, "".join('#'*(p//5)), "".join(' '*(20-(p//5))), p, val_avg_loss), end='\r')
+                    # else:
+                    print("   %dm: epoch %d [%s%s]  %d%%  loss = %.3f" %((time.time() - start)//60, epoch + 1, "".join('#'*(p//5)), "".join(' '*(20-(p//5))), p, val_avg_loss))
                     val_loss = 0
-
-        if early_stopping.validate(val_loss):
+                    
+        if early_stopped:
             break
+
+    write_csv_file(training_loss_list, 'train_loss')
+    write_csv_file(val_loss_list, 'val_loss')
 
 def test_model(model, opt):
     print("Testing model...")
@@ -179,7 +202,7 @@ def main():
     parser.add_argument('-heads', type=int, default=8)
     parser.add_argument('-dropout', type=int, default=0.1)
     parser.add_argument('-batchsize', type=int, default=1500)
-    parser.add_argument('-printevery', type=int, default=100)
+    parser.add_argument('-printevery', type=int, default=500)
     parser.add_argument('-lr', type=int, default=0.0001)
     parser.add_argument('-load_weights')
     parser.add_argument('-create_valset', action='store_true')
@@ -220,9 +243,12 @@ def main():
         print(f'Load the extended vocab...')
         vocab = Vocabulary.load_vocab('./data/vocab')
     
-    train_dataset = Our_Handler(src_path='./data/europarl-v7.de-en.en', tgt_path='./data/europarl-v7.de-en.de', vocab=vocab, tokenizer=sp_tokenizer, max_len=256)
+    train_dataset = Our_Handler(src_path='./data/europarl-v7.de-en.en', tgt_path='./data/europarl-v7.de-en.de', vocab=vocab, tokenizer=sp_tokenizer, max_len=32)
+#     print(train_dataset[0])
+#     print(train_dataset[0][0].shape, train_dataset[0][1].shape, train_dataset[0][2].shape)
+    
     train_dataloader = DataLoader(train_dataset,
-                                  batch_size=8,
+                                  batch_size=64,
                                   shuffle=True,
                                   pin_memory=True,
                                   drop_last=True)
@@ -237,10 +263,10 @@ def main():
                             tgt_path=dev_data_dir[1],
                             vocab=vocab, 
                             tokenizer=sp_tokenizer,
-                            max_len=256)
+                            max_len=32)
     
     dev_dataloader = DataLoader(dev_dataset,
-                            batch_size=8,
+                            batch_size=64,
                             shuffle=False,
                             drop_last=True)
     opt.validation = dev_dataloader
@@ -254,11 +280,11 @@ def main():
                             tgt_path=test_data_dir[1],
                             vocab=vocab, 
                             tokenizer=sp_tokenizer,
-                            max_len=256,
+                            max_len=32,
                             is_test=True)
     
     test_dataloader = DataLoader(test_dataset,
-                            batch_size=8,
+                            batch_size=64,
                             shuffle=False,
                             drop_last=True)
     opt.test = test_dataloader
@@ -276,7 +302,8 @@ def main():
 
     opt.optimizer = torch.optim.Adam(model.parameters(), lr=opt.lr, betas=(0.9, 0.98), eps=1e-9)
     if opt.SGDR == True:
-        opt.sched = CosineWithRestarts(opt.optimizer, T_max=opt.train_len)
+        # opt.sched = CosineWithRestarts(opt.optimizer, T_max=opt.train_len)
+        opt.sched = Triangular(opt.optimizer, num_epochs=opt.epochs, warm_up=opt.epochs//4, cool_down=opt.epochs//4)
 
     if opt.checkpoint > 0:
         print("model weights will be saved every %d minutes and at end of epoch to directory weights/"%(opt.checkpoint))
@@ -362,5 +389,5 @@ def promptNextAction(model, opt):
     
 if __name__ == "__main__":
     os.environ["CUDA_VISIBLE_DEVICES"] = '1'
-    # os.environ["CUDA_VISIBLE_DEVICES"] = '0'
+#     os.environ["CUDA_VISIBLE_DEVICES"] = '0'
     main()

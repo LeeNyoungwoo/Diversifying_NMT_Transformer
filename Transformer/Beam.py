@@ -52,6 +52,7 @@ def k_best_outputs(outputs, out, log_scores, i, k):
 def beam_search(src, model, vocab, opt):
     
     outputs, e_outputs, log_scores = init_vars(src, model, vocab, opt)
+    print(outputs, e_outputs, log_scores)
     eos_tok = vocab.stoi['<eos>']
     src_mask = (src != vocab.stoi['<pad>']).unsqueeze(-2)
     ind = None
