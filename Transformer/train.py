@@ -51,7 +51,7 @@ def train_model(model, opt):
     if opt.checkpoint > 0:
         cptime = time.time()
 
-    early_stopping = EarlyStopping(patience=30, verbose=1)
+    early_stopping = EarlyStopping(patience=5, verbose=1)
 
     loss_log = tqdm(total=0, bar_format='{desc}', position=2)
     
@@ -118,6 +118,7 @@ def train_model(model, opt):
         ## Validating the model
         model.eval()
         val_loss = 0
+        val_step = 0
         early_stopped = False
         
         with torch.no_grad():
@@ -135,25 +136,12 @@ def train_model(model, opt):
 
                 loss = F.cross_entropy(preds.view(-1, preds.size(-1)), ys, ignore_index=opt.trg_pad)
                 val_loss += loss.item()
-                
-                if early_stopping.validate(val_loss):
-                    early_stopped = True
-                    break
+                step += 1
 
-                val_avg_loss = val_loss/opt.printevery
-                
-                val_loss_list.append(val_avg_loss)
+        val_loss = val_loss/step
+        val_loss_list.append(val_loss)
 
-                if (batch_idx + 1) % opt.printevery == 0:
-                    p = int(100 * (batch_idx + 1) / opt.val_len)
-                    # if opt.floyd is False:
-                    #     print("   %dm: epoch %d [%s%s]  %d%%  loss = %.3f" %\
-                    #     ((time.time() - start)//60, epoch + 1, "".join('#'*(p//5)), "".join(' '*(20-(p//5))), p, val_avg_loss), end='\r')
-                    # else:
-                    print("   %dm: epoch %d [%s%s]  %d%%  loss = %.3f" %((time.time() - start)//60, epoch + 1, "".join('#'*(p//5)), "".join(' '*(20-(p//5))), p, val_avg_loss))
-                    val_loss = 0
-                    
-        if early_stopped:
+        if early_stopping.validate(val_loss):
             break
 
     write_csv_file(training_loss_list, 'train_loss')
