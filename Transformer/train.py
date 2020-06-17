@@ -111,9 +111,6 @@ def train_model(model, opt):
             if opt.checkpoint > 0 and ((time.time()-cptime)//60) // opt.checkpoint >= 1:
                 torch.save(model.state_dict(), 'weights/model_weights')
                 cptime = time.time()
-   
-        print("%dm: epoch %d [%s%s]  %d%%  loss = %.3f\nepoch %d complete, loss = %.03f" %\
-        ((time.time() - start)//60, epoch + 1, "".join('#'*(100//5)), "".join(' '*(20-(100//5))), 100, avg_loss, epoch + 1, avg_loss))
     
         ## Validating the model
         model.eval()
@@ -136,10 +133,11 @@ def train_model(model, opt):
 
                 loss = F.cross_entropy(preds.view(-1, preds.size(-1)), ys, ignore_index=opt.trg_pad)
                 val_loss += loss.item()
-                step += 1
+                val_step += 1
 
-        val_loss = val_loss/step
+        val_loss = val_loss/val_step
         val_loss_list.append(val_loss)
+        print("epoch %d, loss = %.3f" %(epoch+1, val_loss))
 
         if early_stopping.validate(val_loss):
             break
