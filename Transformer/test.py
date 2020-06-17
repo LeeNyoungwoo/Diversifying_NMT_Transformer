@@ -51,11 +51,11 @@ def main():
                             tgt_path=test_data_dir[1],
                             vocab=vocab, 
                             tokenizer=sp_tokenizer,
-                            max_len=256,
+                            max_len=32,
                             is_test=True)
 
     test_dataloader = DataLoader(test_dataset,
-                            batch_size=8,
+                            batch_size=64,
                             shuffle=False,
                             drop_last=True)
     opt.test = test_dataloader
@@ -70,8 +70,8 @@ def main():
     test_ppl = 0.
     for batch_idx, (enc_input, dec_input, dec_output) in enumerate(opt.test):
 
-        enc_input = enc_input.transpose(0,1).to(opt.device)
-        dec_input = dec_input.transpose(0,1).to(opt.device)
+        enc_input = enc_input.to(opt.device)
+        dec_input = dec_input.to(opt.device)
         dec_output = dec_output.to(opt.device)
 
         src_mask, trg_mask = create_masks(enc_input, dec_input, opt)
