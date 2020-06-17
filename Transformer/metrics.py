@@ -1,12 +1,19 @@
 import numpy as np
-from nltk.translate.bleu_score import sentence_bleu
+from nltk.translate.bleu_score import corpus_bleu
 from nltk.translate.bleu_score import SmoothingFunction
+from rouge import Rouge
+
+def rouge_compute(reference, translation):
+    rouge = Rouge()
+    scores = rouge.get_scores(reference, translation)
+    return np.array([scores[0]["rouge-l"]["p"], scores[0]["rouge-l"]["r"], scores[0]["rouge-l"]["f"]])
 
 def bleu_compute(reference, translation):
     reference = reference.split()
     translation = translation.split()
     
-    return sentence_bleu([reference], translation, smoothing_function=SmoothingFunction().method7, weights=[1./3, 1./3, 1./3])
+    print(reference, translation)
+    return corpus_bleu([reference], [translation], smoothing_function=SmoothingFunction().method7, weights=[1./3, 1./3, 1./3])
 
 def rfb_compute(bleu_score_list):
     return sum(bleu_score_list) / len(bleu_score_list)

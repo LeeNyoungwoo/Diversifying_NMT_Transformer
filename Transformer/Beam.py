@@ -11,8 +11,7 @@ def init_vars(src, model, vocab, opt):
     e_output = model.encoder(src, src_mask)
     
     outputs = torch.LongTensor([[init_tok]])
-    if opt.device == 'cuda':
-        outputs = outputs.cuda()
+    outputs = outputs.cuda()
     
     trg_mask = nopeak_mask(1, opt)
     
@@ -24,14 +23,12 @@ def init_vars(src, model, vocab, opt):
     log_scores = torch.Tensor([math.log(prob) for prob in probs.data[0]]).unsqueeze(0)
     
     outputs = torch.zeros(opt.k, opt.max_len).long()
-    if opt.device == 'cuda':
-        outputs = outputs.cuda()
+    outputs = outputs.cuda()
     outputs[:, 0] = init_tok
     outputs[:, 1] = ix[0]
     
     e_outputs = torch.zeros(opt.k, e_output.size(-2),e_output.size(-1))
-    if opt.device == 0:
-        e_outputs = e_outputs.cuda()
+    e_outputs = e_outputs.cuda()
     e_outputs[:, :] = e_output[0]
     
     return outputs, e_outputs, log_scores
@@ -86,10 +83,20 @@ def beam_search(src, model, vocab, opt):
             ind = ind.data[0]
             break
     
+    length = []
     if ind is None:
-        length = (outputs[0]==eos_tok).nonzero()[0]
+        length = (outputs==eos_tok).nonzero()[0]
+
         return ' '.join([vocab.itos[tok] for tok in outputs[0][1:length]])
     
     else:
-        length = (outputs[ind]==eos_tok).nonzero()[0]
-        return ' '.join([vocab.itos[tok] for tok in outputs[ind][1:length]])
+        
+        for output in outputs:
+            length.append((output==eos_tok).nonzero()[0])
+        
+        result = []
+        for idx in range(opt.k):
+            result.append(' '.join([vocab.itos[tok] for tok in outputs[idx][1:length[idx]]]))
+        #return ' '.join([vocab.itos[tok] for tok in outputs[ind][1:length]])
+
+        return result

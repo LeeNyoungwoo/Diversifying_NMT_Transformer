@@ -1,11 +1,12 @@
 import pickle
 
 class Vocabulary(object):
-    def __init__(self, vocab, specials=['<pad>', '<sos>', '<eos>']):
+    def __init__(self, vocab, specials=['<pad>', '<unk>', '<sos>', '<eos>']):
         self.pad_index = 0
         self.unk_index = 1
         self.sos_index = 2
         self.eos_index = 3
+        
         
         self.itos = list(specials)
         for word in vocab:

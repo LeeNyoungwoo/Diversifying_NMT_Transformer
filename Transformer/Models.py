@@ -18,6 +18,7 @@ class Encoder(nn.Module):
         self.norm = Norm(d_model)
     def forward(self, src, mask):
         x = self.embed(src)
+
         x = self.pe(x)
         for i in range(self.N):
             x = self.layers[i](x, mask)
@@ -60,14 +61,13 @@ def get_model(opt, src_vocab, trg_vocab):
        
     if opt.load_weights is not None:
         print("loading pretrained weights...")
-        model.load_state_dict(torch.load(f'{opt.load_weights}/model_weights'))
+        model.load_state_dict(torch.load(f'{opt.load_weights}/model_weights1'))
     else:
         for p in model.parameters():
             if p.dim() > 1:
                 nn.init.xavier_uniform_(p) 
     
-    if opt.device == 'cuda':
-        model = model.cuda()
+    model = model.cuda()
     
     return model
     

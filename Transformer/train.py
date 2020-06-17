@@ -85,7 +85,7 @@ def train_model(model, opt):
             
             #ys = trg[:, 1:].contiguous().view(-1)
             ys = dec_output.contiguous().view(-1)
-
+            
             opt.optimizer.zero_grad()
             loss = F.cross_entropy(preds.view(-1, preds.size(-1)), ys, ignore_index=opt.trg_pad)
             loss.backward()
@@ -210,7 +210,7 @@ def main():
     parser.add_argument('-floyd', action='store_true')
     parser.add_argument('-checkpoint', type=int, default=0)
     parser.add_argument('--is_train', type=bool, default=False)
-    parser.add_argument('--is_test', type=bool, default=False)
+    parser.add_argument('--is_test', type=bool, default=True)
     
     opt = parser.parse_args()
     opt.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
