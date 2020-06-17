@@ -9,10 +9,7 @@ def nopeak_mask(size, opt):
     k=1).astype('uint8')
 
     np_mask =  Variable(torch.from_numpy(np_mask) == 0)
-
-    if opt.device == 'cuda':
-      # np_mask = np_mask.cuda()
-        np_mask = np_mask.to(opt.device)
+    np_mask = np_mask.to(opt.device)
     return np_mask
 
 def create_masks(src, trg, opt):
@@ -24,9 +21,7 @@ def create_masks(src, trg, opt):
 
         size = trg.size(1) # get seq_len for matrix
         np_mask = nopeak_mask(size, opt)
-        if trg.is_cuda:
-            # np_mask.cuda()
-            np_mask = np_mask.to(opt.device)
+        np_mask = np_mask.to(opt.device)
         trg_mask = trg_mask & np_mask
         
     else:
