@@ -51,7 +51,7 @@ def train_model(model, opt):
     if opt.checkpoint > 0:
         cptime = time.time()
 
-    early_stopping = EarlyStopping(patience=200, verbose=1)
+    early_stopping = EarlyStopping(patience=30, verbose=1)
 
     loss_log = tqdm(total=0, bar_format='{desc}', position=2)
     
@@ -74,8 +74,8 @@ def train_model(model, opt):
                     
         for batch_idx, (enc_input, dec_input, dec_output) in enumerate(opt.train): 
         # for batch_idx, (enc_input, dec_input, dec_output) in enumerate(tqdm(opt.train, desc="Iteration", ncols=100, position=1)):
-            enc_input = enc_input.transpose(0,1).to(opt.device)
-            dec_input = dec_input.transpose(0,1).to(opt.device)
+            enc_input = enc_input.to(opt.device)
+            dec_input = dec_input.to(opt.device)
             dec_output = dec_output.to(opt.device)
             
             #trg_input = trg[:, :-1]
@@ -123,8 +123,8 @@ def train_model(model, opt):
         with torch.no_grad():
             for batch_idx, (enc_input, dec_input, dec_output) in enumerate(opt.validation): 
             # for batch_idx, (enc_input, dec_input, dec_output) in enumerate(tqdm(opt.validation, desc="Iteration", ncols=100, position=1)):
-                enc_input = enc_input.transpose(0,1).to(opt.device)
-                dec_input = dec_input.transpose(0,1).to(opt.device)
+                enc_input = enc_input.to(opt.device)
+                dec_input = dec_input.to(opt.device)
                 dec_output = dec_output.to(opt.device)
 
                 src_mask, trg_mask = create_masks(enc_input, dec_input, opt)

@@ -19,3 +19,7 @@ save_models/
 #spm
 spm.model
 spm.vocab
+
+#loss
+train_loss_result.csv
+val_loss_result.csv
