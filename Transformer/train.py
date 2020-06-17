@@ -171,8 +171,8 @@ def test_model(model, opt):
     test_loss = 0
     with torch.no_grad():
         for batch_idx, (enc_input, dec_input, dec_output) in enumerate(tqdm(opt.test, desc="Iteration", position=0)):
-            enc_input = enc_input.transpose(0,1).to(opt.device)
-            dec_input = dec_input.transpose(0,1).to(opt.device)
+            enc_input = enc_input.to(opt.device)
+            dec_input = dec_input.to(opt.device)
             dec_output = dec_output.to(opt.device)
 
             src_mask, trg_mask = create_masks(enc_input, dec_input, opt)
@@ -210,7 +210,7 @@ def main():
     parser.add_argument('-floyd', action='store_true')
     parser.add_argument('-checkpoint', type=int, default=0)
     parser.add_argument('--is_train', type=bool, default=False)
-    parser.add_argument('--is_test', type=bool, default=True)
+    parser.add_argument('--is_test', type=bool, default=False)
     
     opt = parser.parse_args()
     opt.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
