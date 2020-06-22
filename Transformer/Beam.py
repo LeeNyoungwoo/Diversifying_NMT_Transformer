@@ -52,7 +52,7 @@ def k_best_outputs(outputs, out, log_scores, i, k):
 def beam_search(src, model, vocab, opt):
     
     outputs, e_outputs, log_scores = init_vars(src, model, vocab, opt)
-    print(outputs, e_outputs, log_scores)
+
     eos_tok = vocab.stoi['<eos>']
     src_mask = (src != vocab.stoi['<pad>']).unsqueeze(-2)
     ind = None
@@ -84,11 +84,18 @@ def beam_search(src, model, vocab, opt):
             break
     
     length = []
-    if ind is None:
-        length = (outputs==eos_tok).nonzero()[0]
 
-        return ' '.join([vocab.itos[tok] for tok in outputs[0][1:length]])
-    
+    if ind is None:
+        for output in outputs:
+            length.append((output==eos_tok).nonzero()[0])
+        
+        result = []
+        for idx in range(opt.k):
+            result.append(' '.join([vocab.itos[tok] for tok in outputs[idx][1:length[idx]]]))
+        #return ' '.join([vocab.itos[tok] for tok in outputs[ind][1:length]])
+
+        return result
+
     else:
         
         for output in outputs:

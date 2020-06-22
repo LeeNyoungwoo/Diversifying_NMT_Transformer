@@ -182,7 +182,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-no_cuda', action='store_true')
     parser.add_argument('-SGDR', action='store_true')
-    parser.add_argument('-epochs', type=int, default=2)
+    parser.add_argument('-epochs', type=int, default=50)
     parser.add_argument('-d_model', type=int, default=512)
     parser.add_argument('-n_layers', type=int, default=6)
     parser.add_argument('-heads', type=int, default=8)
@@ -234,7 +234,7 @@ def main():
 #     print(train_dataset[0][0].shape, train_dataset[0][1].shape, train_dataset[0][2].shape)
     
     train_dataloader = DataLoader(train_dataset,
-                                  batch_size=64,
+                                  batch_size=128,
                                   shuffle=True,
                                   pin_memory=True,
                                   drop_last=True)
@@ -252,7 +252,7 @@ def main():
                             max_len=32)
     
     dev_dataloader = DataLoader(dev_dataset,
-                            batch_size=64,
+                            batch_size=128,
                             shuffle=False,
                             drop_last=True)
     opt.validation = dev_dataloader
@@ -270,7 +270,7 @@ def main():
                             is_test=True)
     
     test_dataloader = DataLoader(test_dataset,
-                            batch_size=64,
+                            batch_size=128,
                             shuffle=False,
                             drop_last=True)
     opt.test = test_dataloader
