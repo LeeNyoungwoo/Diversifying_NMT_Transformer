@@ -32,11 +32,11 @@ class Decoder(nn.Module):
         self.pe = PositionalEncoder(d_model, dropout=dropout)
         self.layers = get_clones(DecoderLayer(d_model, heads, dropout), N)
         self.norm = Norm(d_model)
-    def forward(self, trg, e_outputs, src_mask, trg_mask):
+    def forward(self, trg, e_outputs, src_mask, trg_mask, policy=False):
         x = self.embed(trg)
         x = self.pe(x)
         for i in range(self.N):
-            x = self.layers[i](x, e_outputs, src_mask, trg_mask)
+            x = self.layers[i](x, e_outputs, src_mask, trg_mask, policy)
         return self.norm(x)
 
 class Transformer(nn.Module):
@@ -45,10 +45,10 @@ class Transformer(nn.Module):
         self.encoder = Encoder(src_vocab, d_model, N, heads, dropout)
         self.decoder = Decoder(trg_vocab, d_model, N, heads, dropout)
         self.out = nn.Linear(d_model, trg_vocab)
-    def forward(self, src, trg, src_mask, trg_mask):
+    def forward(self, src, trg, src_mask, trg_mask, policy=False):
         e_outputs = self.encoder(src, src_mask)
         #print("DECODER")
-        d_output = self.decoder(trg, e_outputs, src_mask, trg_mask)
+        d_output = self.decoder(trg, e_outputs, src_mask, trg_mask, policy)
         output = self.out(d_output)
         return output
 

@@ -2,8 +2,14 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import math
+from policy import *
+
+debug = False
 
 
+# define policy
+sample_policy = SamplePolicy(3, 8)
+    
 class Norm(nn.Module):
     def __init__(self, d_model, eps = 1e-6):
         super().__init__()
@@ -21,15 +27,31 @@ class Norm(nn.Module):
         / (x.std(dim=-1, keepdim=True) + self.eps) + self.bias
         return norm
 
-def attention(q, k, v, d_k, mask=None, dropout=None):
+def attention(q, k, v, d_k, mask=None, dropout=None, policy=False):
     
     scores = torch.matmul(q, k.transpose(-2, -1)) /  math.sqrt(d_k)
     
+    if debug:
+        print(f'scores: {scores.size()}')
     if mask is not None:
         mask = mask.unsqueeze(1)
         scores = scores.masked_fill(mask == 0, -1e9)
     
     scores = F.softmax(scores, dim=-1)
+    
+    
+    
+    if debug:
+        print(f'score: {scores.size()}')
+    
+    if policy:
+        scores = sample_policy(scores)
+        #print(f'[after policy] scores: {scores.size()}')
+        
+    ###################
+    # score shape == (batch_size, head_num, src_len, tgt_len)
+#    tr_scores = scores.transpose()
+    ###################
     
     if dropout is not None:
         scores = dropout(scores)
@@ -52,10 +74,13 @@ class MultiHeadAttention(nn.Module):
         self.dropout = nn.Dropout(dropout)
         self.out = nn.Linear(d_model, d_model)
     
-    def forward(self, q, k, v, mask=None):
+    def forward(self, q, k, v, mask=None, policy=False):
         
         bs = q.size(0)
         
+        if debug:
+            print(f'batch size: {bs}')
+            print(f'q, k, v: {q.size()}, {k.size()}, {v.size()}')
         # perform linear operation and split into N heads
         k = self.k_linear(k).view(bs, -1, self.h, self.d_k)
         q = self.q_linear(q).view(bs, -1, self.h, self.d_k)
@@ -68,7 +93,8 @@ class MultiHeadAttention(nn.Module):
         
 
         # calculate attention using function we will define next
-        scores = attention(q, k, v, self.d_k, mask, self.dropout)
+        scores = attention(q, k, v, self.d_k, mask, self.dropout, policy)
+
         # concatenate heads and put through final linear layer
         concat = scores.transpose(1,2).contiguous()\
         .view(bs, -1, self.d_model)

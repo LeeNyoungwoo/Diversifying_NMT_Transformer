@@ -116,13 +116,15 @@ def main():
     ####################################################
     model = get_model(opt, len(vocab), len(vocab))
     
+    
     #opt.text = 'How are you?'
     if opt.bleu == False:
         pred = []
         refer = []
         for batch_idx, (text, tgt) in enumerate(zip(src_corpus, tgt_corpus)):
-
+                
             opt.text = text[0]
+            #print(f'length: {len(opt.text)}')
 
             phrase = translate(opt, model, vocab, sp_tokenizer)
 
@@ -131,17 +133,17 @@ def main():
 
         #phrase = translate(opt, model, vocab, sp_tokenizer)
 
-        with open('translation_result', 'wb') as f:
+        with open('translation_result1', 'wb') as f:
             pc.dump(pred, f)
-        with open('reference_result', 'wb') as f:
+        with open('reference_result1', 'wb') as f:
             pc.dump(refer, f)
     else:
-        with open('translation_result', 'rb') as f:
+        with open('translation_result1', 'rb') as f:
             translation = pc.load(f)
-        with open('reference_result', 'rb') as f:
+        with open('reference_result1', 'rb') as f:
             reference = pc.load(f)
             
-    compute_metrics(reference, translation)
+        compute_metrics(reference, translation)
     
 def filtering(sentence):
     filter_sent = []
@@ -163,9 +165,9 @@ def compute_metrics(reference, translation):
     
     print(len(translation))
     for idx, each in enumerate(translation):
-        print(idx, each, len(each))
+    #    print(idx, each, len(each))
         each = filtering(each)
-        print(each, len(each))
+    #    print(each, len(each))
         pwb_result.append(pwb_compute(each))
     print(f'PWB result: {sum(pwb_result):.3f}')
     

@@ -70,6 +70,9 @@ def main():
     test_ppl = 0.
     for batch_idx, (enc_input, dec_input, dec_output) in enumerate(opt.test):
 
+        if batch_idx == 1:
+            break
+            
         enc_input = enc_input.to(opt.device)
         dec_input = dec_input.to(opt.device)
         dec_output = dec_output.to(opt.device)

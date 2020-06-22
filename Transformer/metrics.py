@@ -12,7 +12,7 @@ def bleu_compute(reference, translation):
     reference = reference.split()
     translation = translation.split()
 
-    return corpus_bleu([reference], [translation], smoothing_function=SmoothingFunction().method3, weights=[1./3, 1./3, 1./3])
+    return corpus_bleu([reference], [translation], smoothing_function=SmoothingFunction().method3)
 
 def rfb_compute(bleu_score_list):
     return sum(bleu_score_list) / len(bleu_score_list)
