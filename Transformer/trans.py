@@ -155,7 +155,7 @@ def filtering(sentence):
 def compute_metrics(reference, translation):
     bleu_result = []
     for idx, (refer, trans) in enumerate(zip(reference, translation)):
-        bleu_result.append(bleu_compute(refer[0], trans[0]))
+        bleu_result.append(rfb_bleu_compute(refer[0], trans[0]))
     
     print(sum(bleu_result))
     print(f'RFB result: {rfb_compute(bleu_result):.3f}')
@@ -163,9 +163,9 @@ def compute_metrics(reference, translation):
     
     print(len(translation))
     for idx, each in enumerate(translation):
-        print(idx, each, len(each))
+
         each = filtering(each)
-        print(each, len(each))
+
         pwb_result.append(pwb_compute(each))
     print(f'PWB result: {sum(pwb_result):.3f}')
     
