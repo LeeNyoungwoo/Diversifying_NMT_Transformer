@@ -9,6 +9,7 @@ debug = False
 
 # define policy
 sample_policy = SamplePolicy(3, 8)
+#sample_policy = OurPolicy(3, 8)
     
 class Norm(nn.Module):
     def __init__(self, d_model, eps = 1e-6):

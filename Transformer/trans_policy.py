@@ -122,7 +122,7 @@ def main():
         pred = []
         refer = []
         for batch_idx, (text, tgt) in enumerate(zip(src_corpus, tgt_corpus)):
-                
+
             opt.text = text[0]
             #print(f'length: {len(opt.text)}')
 
@@ -133,14 +133,14 @@ def main():
 
         #phrase = translate(opt, model, vocab, sp_tokenizer)
 
-        with open('translation_result1', 'wb') as f:
+        with open('translation_result/translation_result_k_3', 'wb') as f:
             pc.dump(pred, f)
-        with open('reference_result1', 'wb') as f:
+        with open('translation_result/reference_result_k_3', 'wb') as f:
             pc.dump(refer, f)
     else:
-        with open('translation_result1', 'rb') as f:
+        with open('translation_result/our_translation_result_k_4', 'rb') as f:
             translation = pc.load(f)
-        with open('reference_result1', 'rb') as f:
+        with open('translation_result/our_reference_result_k_4', 'rb') as f:
             reference = pc.load(f)
             
         compute_metrics(reference, translation)
@@ -157,7 +157,7 @@ def filtering(sentence):
 def compute_metrics(reference, translation):
     bleu_result = []
     for idx, (refer, trans) in enumerate(zip(reference, translation)):
-        bleu_result.append(bleu_compute(refer[0], trans[0]))
+        bleu_result.append(rfb_bleu_compute(refer[0], trans[0]))
     
     print(sum(bleu_result))
     print(f'RFB result: {rfb_compute(bleu_result):.3f}')
