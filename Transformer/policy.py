@@ -29,7 +29,7 @@ class SamplePolicy(nn.Module):
                 
         # confusing condition
         if max(counting) <= self.K:
-            sampled_head = np.random.randint(low=0, high=self.head_num-1, size=1)
+            sampled_head = np.random.randint(low=0, high=self.head_num, size=1)
             attention_weight[:, time_step-1] = attention_weight[:, time_step-1, sampled_head]
         
         attention_weight = attention_weight.transpose(1, 2)

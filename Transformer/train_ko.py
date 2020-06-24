@@ -138,6 +138,11 @@ def train_model(model, opt):
         val_loss = val_loss/val_step
         val_loss_list.append(val_loss)
         print("epoch %d, loss = %.3f" %(epoch+1, val_loss))
+        
+        dst = 'enko_100len_32batch'
+        print("saving weights to " + dst + "/...")
+        torch.save(model.state_dict(), f'{dst}/model_weights')
+        print("weights and field pickles saved to " + dst)
 
         if early_stopping.validate(val_loss):
             break
@@ -211,8 +216,8 @@ def main():
 
     # modified version for tokenize, vocab, dataset
     if opt.is_train:
-        source_file_name = 'ko_data/ted_biling_train.en'
-        target_file_name = 'ko_data/ted_biling_train.ko'
+        source_file_name = 'ko_data/train_ko_en.en'
+        target_file_name = 'ko_data/train_ko_en.ko'
         
         print(f'Build Tokenizer and Vocab...')
         en_sp_tokenizer = Tokenizer(is_train=True, filename=source_file_name, tokenizer_type='spm', model_prefix='spm_en', vocab_size=16000, model_type='bpe')
@@ -239,10 +244,10 @@ def main():
         ko_vocab = Vocabulary.load_vocab('./ko_data/ko_vocab')
 
     
-    train_dataset = Our_Handler(src_path='./ko_data/ted_biling_train.en', tgt_path='./ko_data/ted_biling_train.ko', 
-                                en_vocab=en_vocab, ko_vocab=ko_vocab, en_tokenizer=en_sp_tokenizer, ko_tokenizer=ko_sp_tokenizer, max_len=32)
+    train_dataset = Our_Handler(src_path='./ko_data/train_ko_en.en', tgt_path='./ko_data/train_ko_en.ko', 
+                                en_vocab=en_vocab, ko_vocab=ko_vocab, en_tokenizer=en_sp_tokenizer, ko_tokenizer=ko_sp_tokenizer, max_len=100)
     train_dataloader = DataLoader(train_dataset,
-                                  batch_size=64,
+                                  batch_size=32,
                                   shuffle=True,
                                   pin_memory=True,
                                   drop_last=True)
@@ -253,15 +258,15 @@ def main():
     
     ######################DEV DATA######################
     # fitting the dev dataset dir
-    dev_data_dir = ['./ko_data/dev/ted_biling_dev.en', './ko_data/dev/ted_biling_dev.ko']
+    dev_data_dir = ['./ko_data/dev/dev_ko_en.en', './ko_data/dev/dev_ko_en.ko']
     dev_dataset = Our_Handler(src_path=dev_data_dir[0], 
                             tgt_path=dev_data_dir[1],
                             en_vocab=en_vocab,ko_vocab=ko_vocab, 
                             en_tokenizer=en_sp_tokenizer, ko_tokenizer=ko_sp_tokenizer,
-                            max_len=32)
+                            max_len=100)
     
     dev_dataloader = DataLoader(dev_dataset,
-                            batch_size=64,
+                            batch_size=32,
                             shuffle=False,
                             drop_last=True)
     opt.validation = dev_dataloader
@@ -270,17 +275,17 @@ def main():
 
     ######################TEST DATA######################
     # fitting the test dataset dir
-    test_data_dir = ['./ko_data/test/ted_biling_test.en', './ko_data/test/ted_biling_test.ko']
+    test_data_dir = ['./ko_data/test/test_ko_en.en', './ko_data/test/test_ko_en.ko']
     test_dataset = Our_Handler(src_path=test_data_dir[0], 
                             tgt_path=test_data_dir[1],
                             en_vocab=en_vocab,ko_vocab=ko_vocab, 
                             en_tokenizer=en_sp_tokenizer, ko_tokenizer=ko_sp_tokenizer,
-                            max_len=32,
+                            max_len=100,
                             # is_test=True
                             is_test=False)
     
     test_dataloader = DataLoader(test_dataset,
-                            batch_size=64,
+                            batch_size=32,
                             shuffle=False,
                             drop_last=True)
     opt.test = test_dataloader
@@ -312,8 +317,8 @@ def main():
         test_model(model, opt)
     else:
         train_model(model, opt)
-        if opt.floyd is False:
-            promptNextAction(model, opt)
+#         if opt.floyd is False:
+#             promptNextAction(model, opt)
 
 def yesno(response):
     while True:
