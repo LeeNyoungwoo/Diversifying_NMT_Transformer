@@ -9,3 +9,14 @@ checkpoint/
 
 # OS Files 
 .DS_Store
+
+#data
+data/
+ko_data/
+save_models/
+
+# spm.model
+spm_en.model
+spm_ko.model
+spm_en.vocab
+spm_ko.vocab
