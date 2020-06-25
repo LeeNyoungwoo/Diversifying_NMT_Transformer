@@ -26,7 +26,7 @@ def main():
     
     parser = argparse.ArgumentParser()
     parser.add_argument('-load_weights', required=True)
-    parser.add_argument('-k', type=int, default=5)
+    parser.add_argument('-k', type=int, default=3)
     parser.add_argument('-max_len', type=int, default=32)
     parser.add_argument('-d_model', type=int, default=512)
     parser.add_argument('-n_layers', type=int, default=6)
@@ -91,4 +91,5 @@ def main():
     print(f'Test loss: {avg_test_loss:.3f}, Test perpelxity: {avg_ppl:.3f}')
     
 if __name__ == '__main__':
+    os.environ["CUDA_VISIBLE_DEVICES"] = '1'
     main()

@@ -8,6 +8,8 @@ def init_vars(src, model, vocab, opt):
     
     init_tok = vocab.stoi['<sos>']
     src_mask = (src != vocab.stoi['<pad>']).unsqueeze(-2)
+    #print(src)
+    #print(f'src: {src.size()}, src_mask: {src_mask.size()}')
     e_output = model.encoder(src, src_mask)
     
     outputs = torch.LongTensor([[init_tok]])
@@ -16,9 +18,9 @@ def init_vars(src, model, vocab, opt):
     trg_mask = nopeak_mask(1, opt)
     
     out = model.out(model.decoder(outputs,
-    e_output, src_mask, trg_mask))
+    e_output, src_mask, trg_mask, policy=True))
     out = F.softmax(out, dim=-1)
-    
+    #print(f'out : {out.size()}')
     probs, ix = out[:, -1].data.topk(opt.k)
     log_scores = torch.Tensor([math.log(prob) for prob in probs.data[0]]).unsqueeze(0)
     
@@ -52,7 +54,11 @@ def k_best_outputs(outputs, out, log_scores, i, k):
 def beam_search(src, model, vocab, opt):
     
     outputs, e_outputs, log_scores = init_vars(src, model, vocab, opt)
-    print(outputs, e_outputs, log_scores)
+
+    #print('\nbeam_search start\n')
+    #print(f'outputs: {outputs.size()}')
+    #print(f'e_outputs: {e_outputs.size()}')
+    #print(f'log_scores: {log_scores.size()}')
     eos_tok = vocab.stoi['<eos>']
     src_mask = (src != vocab.stoi['<pad>']).unsqueeze(-2)
     ind = None
@@ -61,7 +67,7 @@ def beam_search(src, model, vocab, opt):
         trg_mask = nopeak_mask(i, opt)
 
         out = model.out(model.decoder(outputs[:,:i],
-        e_outputs, src_mask, trg_mask))
+        e_outputs, src_mask, trg_mask, policy=True))
 
         out = F.softmax(out, dim=-1)
     
@@ -84,11 +90,18 @@ def beam_search(src, model, vocab, opt):
             break
     
     length = []
-    if ind is None:
-        length = (outputs==eos_tok).nonzero()[0]
 
-        return ' '.join([vocab.itos[tok] for tok in outputs[0][1:length]])
-    
+    if ind is None:
+        for output in outputs:
+            length.append((output==eos_tok).nonzero()[0])
+        
+        result = []
+        for idx in range(opt.k):
+            result.append(' '.join([vocab.itos[tok] for tok in outputs[idx][1:length[idx]]]))
+        #return ' '.join([vocab.itos[tok] for tok in outputs[ind][1:length]])
+
+        return result
+
     else:
         
         for output in outputs:

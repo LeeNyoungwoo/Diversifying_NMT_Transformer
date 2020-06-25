@@ -1,6 +1,8 @@
 import torch
 import torch.nn as nn
 from Sublayers import FeedForward, MultiHeadAttention, Norm
+from policy import *
+debug = False
 
 class EncoderLayer(nn.Module):
     def __init__(self, d_model, heads, dropout=0.1):
@@ -36,12 +38,20 @@ class DecoderLayer(nn.Module):
         self.attn_2 = MultiHeadAttention(heads, d_model, dropout=dropout)
         self.ff = FeedForward(d_model, dropout=dropout)
 
-    def forward(self, x, e_outputs, src_mask, trg_mask):
+    def forward(self, x, e_outputs, src_mask, trg_mask, policy=False):
         x2 = self.norm_1(x)
+        
+        if debug:
+            print(f'Decoder attention start\n')
         x = x + self.dropout_1(self.attn_1(x2, x2, x2, trg_mask))
         x2 = self.norm_2(x)
-        x = x + self.dropout_2(self.attn_2(x2, e_outputs, e_outputs, \
-        src_mask))
+        if debug:
+            print(f'encoder_output: {e_outputs.size()}')
+        attn = self.attn_2(x2, e_outputs, e_outputs, src_mask, policy)
+        if debug:
+            print(f'Enc-dec attention start\n')
+            print(f'enc-dec attn: {attn.size()}')
+        x = x + self.dropout_2(attn)
         x2 = self.norm_3(x)
         x = x + self.dropout_3(self.ff(x2))
         return x
