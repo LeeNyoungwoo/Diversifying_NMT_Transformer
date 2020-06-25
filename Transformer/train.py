@@ -51,7 +51,7 @@ def train_model(model, opt):
     if opt.checkpoint > 0:
         cptime = time.time()
 
-    early_stopping = EarlyStopping(patience=5, verbose=1)
+    early_stopping = EarlyStopping(patience=3, verbose=1)
 
     loss_log = tqdm(total=0, bar_format='{desc}', position=2)
     
@@ -229,12 +229,12 @@ def main():
         print(f'Load the extended vocab...')
         vocab = Vocabulary.load_vocab('./data/vocab')
     
-    train_dataset = Our_Handler(src_path='./data/europarl-v7.de-en.en', tgt_path='./data/europarl-v7.de-en.de', vocab=vocab, tokenizer=sp_tokenizer, max_len=32)
+    train_dataset = Our_Handler(src_path='./data/europarl-v7.de-en.en', tgt_path='./data/europarl-v7.de-en.de', vocab=vocab, tokenizer=sp_tokenizer, max_len=128)
 #     print(train_dataset[0])
 #     print(train_dataset[0][0].shape, train_dataset[0][1].shape, train_dataset[0][2].shape)
     
     train_dataloader = DataLoader(train_dataset,
-                                  batch_size=64,
+                                  batch_size=32,
                                   shuffle=True,
                                   pin_memory=True,
                                   drop_last=True)
@@ -249,10 +249,10 @@ def main():
                             tgt_path=dev_data_dir[1],
                             vocab=vocab, 
                             tokenizer=sp_tokenizer,
-                            max_len=32)
+                            max_len=128)
     
     dev_dataloader = DataLoader(dev_dataset,
-                            batch_size=64,
+                            batch_size=32,
                             shuffle=False,
                             drop_last=True)
     opt.validation = dev_dataloader
@@ -266,11 +266,11 @@ def main():
                             tgt_path=test_data_dir[1],
                             vocab=vocab, 
                             tokenizer=sp_tokenizer,
-                            max_len=32,
+                            max_len=128,
                             is_test=True)
     
     test_dataloader = DataLoader(test_dataset,
-                            batch_size=64,
+                            batch_size=32,
                             shuffle=False,
                             drop_last=True)
     opt.test = test_dataloader
