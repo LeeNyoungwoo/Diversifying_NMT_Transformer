@@ -51,7 +51,7 @@ def train_model(model, opt):
     if opt.checkpoint > 0:
         cptime = time.time()
 
-    early_stopping = EarlyStopping(patience=2, verbose=1)
+    early_stopping = EarlyStopping(patience=3, verbose=1)
 
     loss_log = tqdm(total=0, bar_format='{desc}', position=2)
     
@@ -74,6 +74,7 @@ def train_model(model, opt):
                     
         for batch_idx, (enc_input, dec_input, dec_output) in enumerate(opt.train): 
         # for batch_idx, (enc_input, dec_input, dec_output) in enumerate(tqdm(opt.train, desc="Iteration", ncols=100, position=1)):
+            
             enc_input = enc_input.to(opt.device)
             dec_input = dec_input.to(opt.device)
             dec_output = dec_output.to(opt.device)
@@ -100,17 +101,7 @@ def train_model(model, opt):
                 p = int(100 * (batch_idx + 1) / opt.train_len)
                 print("   %dm: epoch %d [%s%s]  %d%%  loss = %.3f" %((time.time() - start)//60, epoch + 1, "".join('#'*(p//5)), "".join(' '*(20-(p//5))), p, avg_loss))
                 training_loss_list.append(avg_loss)
-                # if opt.floyd is False:
-                #     print("   %dm: epoch %d [%s%s]  %d%%  loss = %.3f" %\
-                #     ((time.time() - start)//60, epoch + 1, "".join('#'*(p//5)), "".join(' '*(20-(p//5))), p, avg_loss), end='\r')
-                # else:
-                #     print("   %dm: epoch %d [%s%s]  %d%%  loss = %.3f" %\
-                #     ((time.time() - start)//60, epoch + 1, "".join('#'*(p//5)), "".join(' '*(20-(p//5))), p, avg_loss))
                 total_loss = 0
-            
-            if opt.checkpoint > 0 and ((time.time()-cptime)//60) // opt.checkpoint >= 1:
-                torch.save(model.state_dict(), 'weights/model_weights')
-                cptime = time.time()
     
         ## Validating the model
         model.eval()
@@ -139,7 +130,7 @@ def train_model(model, opt):
         val_loss_list.append(val_loss)
         print("epoch %d, loss = %.3f" %(epoch+1, val_loss))
         
-        dst = 'enko_100len_32batch'
+        dst = 'koen_100len_32batch'
         print("saving weights to " + dst + "/...")
         torch.save(model.state_dict(), f'{dst}/model_weights')
         print("weights and field pickles saved to " + dst)
@@ -220,8 +211,8 @@ def main():
         target_file_name = 'ko_data/train_ko_en.ko'
         
         print(f'Build Tokenizer and Vocab...')
-        en_sp_tokenizer = Tokenizer(is_train=True, filename=source_file_name, tokenizer_type='spm', model_prefix='spm_en', vocab_size=16000, model_type='bpe')
-        ko_sp_tokenizer = Tokenizer(is_train=True, filename=target_file_name, tokenizer_type='spm', model_prefix='spm_ko', vocab_size=16000, model_type='bpe')
+        en_sp_tokenizer = Tokenizer(is_train=True, filename=source_file_name, tokenizer_type='spm', model_prefix='spm_en', vocab_size=32000, model_type='bpe')
+        ko_sp_tokenizer = Tokenizer(is_train=True, filename=target_file_name, tokenizer_type='spm', model_prefix='spm_ko', vocab_size=32000, model_type='bpe')
         en_sp_vocab = en_sp_tokenizer.vocab
         ko_sp_vocab = ko_sp_tokenizer.vocab
     else:
@@ -243,27 +234,45 @@ def main():
         en_vocab = Vocabulary.load_vocab('./ko_data/en_vocab')
         ko_vocab = Vocabulary.load_vocab('./ko_data/ko_vocab')
 
+    #En-Ko
+#     train_dataset = Our_Handler(src_path='./ko_data/train_ko_en.en', tgt_path='./ko_data/train_ko_en.ko', 
+#                                 en_vocab=en_vocab, ko_vocab=ko_vocab, en_tokenizer=en_sp_tokenizer, ko_tokenizer=ko_sp_tokenizer, max_len=100)
+    #Ko-En
+    train_dataset = Our_Handler(src_path='./ko_data/train_ko_en.ko', tgt_path='./ko_data/train_ko_en.en', 
+                                en_vocab=en_vocab, ko_vocab=ko_vocab, en_tokenizer=en_sp_tokenizer, ko_tokenizer=ko_sp_tokenizer, max_len=90)
     
-    train_dataset = Our_Handler(src_path='./ko_data/train_ko_en.en', tgt_path='./ko_data/train_ko_en.ko', 
-                                en_vocab=en_vocab, ko_vocab=ko_vocab, en_tokenizer=en_sp_tokenizer, ko_tokenizer=ko_sp_tokenizer, max_len=100)
     train_dataloader = DataLoader(train_dataset,
                                   batch_size=32,
                                   shuffle=True,
                                   pin_memory=True,
                                   drop_last=True)
     opt.train = train_dataloader
+    #En-Ko
     opt.src_pad = en_vocab.pad_index
     opt.trg_pad = ko_vocab.pad_index
+    
+    #Ko-En
+    opt.src_pad = en_vocab.pad_index
+    opt.trg_pad = ko_vocab.pad_index
+    
     opt.train_len = len(train_dataloader)
     
     ######################DEV DATA######################
     # fitting the dev dataset dir
     dev_data_dir = ['./ko_data/dev/dev_ko_en.en', './ko_data/dev/dev_ko_en.ko']
-    dev_dataset = Our_Handler(src_path=dev_data_dir[0], 
-                            tgt_path=dev_data_dir[1],
+    
+    #En-Ko
+#     dev_dataset = Our_Handler(src_path=dev_data_dir[0], 
+#                             tgt_path=dev_data_dir[1],
+#                             en_vocab=en_vocab,ko_vocab=ko_vocab, 
+#                             en_tokenizer=en_sp_tokenizer, ko_tokenizer=ko_sp_tokenizer,
+#                             max_len=100)
+    #Ko-En
+    dev_dataset = Our_Handler(src_path=dev_data_dir[1], 
+                            tgt_path=dev_data_dir[0],
                             en_vocab=en_vocab,ko_vocab=ko_vocab, 
                             en_tokenizer=en_sp_tokenizer, ko_tokenizer=ko_sp_tokenizer,
-                            max_len=100)
+                            max_len=90)
     
     dev_dataloader = DataLoader(dev_dataset,
                             batch_size=32,
@@ -276,11 +285,21 @@ def main():
     ######################TEST DATA######################
     # fitting the test dataset dir
     test_data_dir = ['./ko_data/test/test_ko_en.en', './ko_data/test/test_ko_en.ko']
-    test_dataset = Our_Handler(src_path=test_data_dir[0], 
-                            tgt_path=test_data_dir[1],
+    
+    #En-Ko
+#     test_dataset = Our_Handler(src_path=test_data_dir[0], 
+#                             tgt_path=test_data_dir[1],
+#                             en_vocab=en_vocab,ko_vocab=ko_vocab, 
+#                             en_tokenizer=en_sp_tokenizer, ko_tokenizer=ko_sp_tokenizer,
+#                             max_len=100,
+#                             # is_test=True
+#                             is_test=False)
+    #Ko-En
+    test_dataset = Our_Handler(src_path=test_data_dir[1], 
+                            tgt_path=test_data_dir[0],
                             en_vocab=en_vocab,ko_vocab=ko_vocab, 
                             en_tokenizer=en_sp_tokenizer, ko_tokenizer=ko_sp_tokenizer,
-                            max_len=100,
+                            max_len=90,
                             # is_test=True
                             is_test=False)
     
@@ -291,8 +310,12 @@ def main():
     opt.test = test_dataloader
     opt.test_len = len(test_dataloader)
     ####################################################
-
-    model = get_model(opt, len(en_vocab), len(ko_vocab))
+    
+    #En-Ko
+#     model = get_model(opt, len(en_vocab), len(ko_vocab))
+    
+    #Ko-En
+    model = get_model(opt, len(ko_vocab), len(en_vocab))
     
     if torch.cuda.device_count() > 1:
         model = nn.DataParallel(model)

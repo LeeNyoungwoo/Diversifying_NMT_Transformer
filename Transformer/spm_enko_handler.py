@@ -38,8 +38,14 @@ class Our_Handler(Dataset):
                 src_sent = self.truncating(src_sent)
             if len(tgt_sent) > self.max_len:
                 tgt_sent = self.truncating(tgt_sent)
-            src_ids = self.en_convert_tokens_to_ids(src_sent)
-            tgt_ids = self.ko_convert_tokens_to_ids(tgt_sent)
+            
+            #En-Ko
+#             src_ids = self.en_convert_tokens_to_ids(src_sent)
+#             tgt_ids = self.ko_convert_tokens_to_ids(tgt_sent)
+            
+            #Ko-En
+            src_ids = self.ko_convert_tokens_to_ids(src_sent)
+            tgt_ids = self.en_convert_tokens_to_ids(tgt_sent)
             
             # make encoder input, in this case, we add just padded tokens
             # we can add <sos> token and <eos> token
@@ -48,8 +54,14 @@ class Our_Handler(Dataset):
             # make decoder input and output
             # for decoder input, we add <sos> token
             # for decoder output, we add <eos> token
-            dec_input = [self.en_vocab.sos_index] + tgt_ids
-            dec_output = tgt_ids + [self.en_vocab.eos_index]
+            
+            #En-Ko
+#             dec_input = [self.en_vocab.sos_index] + tgt_ids
+#             dec_output = tgt_ids + [self.en_vocab.eos_index]
+            
+            #Ko-En
+            dec_input = [self.ko_vocab.sos_index] + tgt_ids
+            dec_output = tgt_ids + [self.ko_vocab.eos_index]
             
             padded_dec_input = self.padding(dec_input)
             padded_dec_output = self.padding(dec_output)
@@ -61,6 +73,27 @@ class Our_Handler(Dataset):
         enc_inputs = self.convert_data_type(enc_inputs)
         dec_inputs = self.convert_data_type(dec_inputs)
         dec_outputs = self.convert_data_type(dec_outputs)
+        
+#         print('src_sent: ', src_sent)
+#         print('tgt_sent: ', tgt_sent)
+#         print('src_ids: ', src_ids)
+#         print('tgt_ids: ', tgt_ids)
+        
+#         print('ko_eos_idx: ', self.ko_vocab.eos_index)
+#         print('en_eos_idx: ', self.en_vocab.eos_index)
+        
+#         src_recon = []
+#         src_recon.append(' '.join([self.ko_vocab.itos[tok] for tok in src_ids]))
+        
+#         tgt_recon = []
+#         tgt_recon.append(' '.join([self.en_vocab.itos[tok] for tok in tgt_ids]))
+        
+#         print('src_recon: ', src_recon)
+#         print('tgt_recon: ', tgt_recon)
+        
+#         print('enc_input: ', enc_inputs[0])
+#         print('dec_input: ', dec_inputs[0])
+#         print('dec_output: ', dec_outputs[0])
         
         return enc_inputs[0], dec_inputs[0], dec_outputs[0]
     

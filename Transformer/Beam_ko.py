@@ -91,9 +91,9 @@ def beam_search(src, model, s_vocab, t_vocab, opt):
 
     if ind is None:
         for output in outputs:
-            out_list = output.tolist()
-            out_list.append(3)
-            output = torch.Tensor(out_list)
+#             out_list = output.tolist()
+#             out_list.append(3)
+#             output = torch.Tensor(out_list)
             length.append((output==eos_tok).nonzero()[0])
         
         result = []
